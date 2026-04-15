@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+httpx
+python-dotenv
+pandas
+numpy
+faiss-cpu
+sentence-transformers
+FlagEmbedding
+spacy
+rapidfuzz
+word2number
+langchain-ollama
+langchain-huggingface
+ragas

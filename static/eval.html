@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Response Quality Dashboard – Meeting Copilot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --primary: #940025;
+            --primary-dark: #7a001f;
+            --bg: #f4f4f9;
+            --surface: #ffffff;
+            --surface-alt: #faf5f6;
+            --text: #1a1a2e;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --border-light: #f0f0f4;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+            --radius: 12px;
+            --transition: 0.2s ease;
+            --good: #16a34a;
+            --good-bg: #f0fdf4;
+            --mid: #d97706;
+            --mid-bg: #fffbeb;
+            --bad: #dc2626;
+            --bad-bg: #fef2f2;
+        }
+        [data-theme="dark"] {
+            --bg: #0f0f1a;
+            --surface: #1a1a2e;
+            --surface-alt: #1f1f35;
+            --text: #e5e7eb;
+            --text-muted: #9ca3af;
+            --border: #2d2d4a;
+            --border-light: #252540;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.35);
+            --good-bg: #052e16;
+            --mid-bg: #1c1000;
+            --bad-bg: #1c0505;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 2px 12px rgba(148,0,37,0.35);
+            position: relative;
+            z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .header-left img { height: 36px; }
+        .header-divider { width: 1px; height: 24px; background: rgba(255,255,255,0.3); }
+        .header-title {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
+            white-space: nowrap; pointer-events: none;
+        }
+        .hdr-btn {
+            width: 34px; height: 34px; border: none;
+            background: rgba(255,255,255,0.12); color: white;
+            border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background var(--transition);
+        }
+        .hdr-btn:hover { background: rgba(255,255,255,0.22); }
+        .hdr-btn svg { width: 16px; height: 16px; }
+
+        /* ── Layout ── */
+        .main-layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            overflow: hidden;
+            height: calc(100vh - 60px);
+        }
+
+        /* ── Left Panel ── */
+        .left-panel {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .panel-title {
+            font-size: 13px; font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .panel-body {
+            flex: 1; overflow-y: auto; padding: 16px 20px;
+            display: flex; flex-direction: column; gap: 16px;
+        }
+
+        .field-label {
+            font-size: 12px; font-weight: 600; color: var(--text);
+            margin-bottom: 6px; display: block;
+        }
+        .field-hint { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+
+        /* Upload zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 20px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            background: var(--bg);
+            position: relative;
+        }
+        .upload-zone:hover { border-color: var(--primary); background: var(--surface-alt); }
+        .upload-zone.dragover { border-color: var(--primary); background: rgba(148,0,37,0.05); }
+        .upload-zone.has-file { border-style: solid; border-color: var(--primary); background: var(--surface-alt); }
+        .upload-icon {
+            width: 36px; height: 36px; margin: 0 auto 8px;
+            background: var(--surface-alt); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .upload-zone.has-file .upload-icon { background: rgba(148,0,37,0.1); }
+        .upload-label { font-size: 13px; font-weight: 500; }
+        .upload-sublabel { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+        .upload-zone input[type="file"] { display: none; }
+
+        .file-chip {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px; background: var(--bg);
+            border-radius: 8px; border: 1px solid var(--border);
+            margin-top: 8px;
+        }
+        .file-chip-icon {
+            width: 28px; height: 28px; background: rgba(148,0,37,0.08);
+            border-radius: 6px; display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+        }
+        .file-chip-name { font-size: 12px; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-chip-remove {
+            width: 20px; height: 20px; border: none; background: transparent;
+            cursor: pointer; border-radius: 4px; font-size: 14px;
+            color: var(--text-muted); display: flex; align-items: center;
+            justify-content: center; transition: all var(--transition);
+        }
+        .file-chip-remove:hover { background: rgba(148,0,37,0.1); color: var(--primary); }
+
+        textarea {
+            width: 100%; resize: vertical;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            background: var(--bg); color: var(--text);
+            font-family: 'Inter', sans-serif; font-size: 13px;
+            padding: 10px 12px; outline: none;
+            transition: border-color var(--transition);
+            min-height: 140px;
+        }
+        textarea:focus { border-color: var(--primary); }
+        textarea::placeholder { color: var(--text-muted); }
+
+        .panel-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .run-btn {
+            width: 100%; height: 42px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white; border: none; border-radius: var(--radius);
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: opacity var(--transition), transform var(--transition);
+        }
+        .run-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+        .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .run-btn svg { width: 16px; height: 16px; }
+
+        /* ── Right Panel ── */
+        .right-panel {
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .results-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px;
+        }
+        .results-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Summary stats */
+        .summary-stats {
+            display: none; gap: 12px;
+        }
+        .summary-stats.visible { display: flex; }
+        .stat-box {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 16px; text-align: center; min-width: 110px;
+        }
+        .stat-val { font-size: 22px; font-weight: 700; color: var(--primary); line-height: 1; }
+        .stat-lbl { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+        .results-body {
+            flex: 1; overflow-y: auto; padding: 20px 24px;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 12px;
+            color: var(--text-muted);
+        }
+        .empty-state svg { opacity: 0.25; }
+        .empty-state p { font-size: 14px; }
+
+        /* Progress bar */
+        .progress-bar-wrap {
+            display: none; height: 3px; background: var(--border);
+            border-radius: 2px; overflow: hidden; margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+        .progress-bar-wrap.visible { display: block; }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light, #c0003a));
+            border-radius: 2px;
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+        .progress-label {
+            display: none; font-size: 12px; color: var(--text-muted); margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .progress-label.visible { display: block; }
+
+        /* Result card */
+        .result-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            animation: slide-in 0.25s ease;
+            flex-shrink: 0;
+        }
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .card-header {
+            padding: 12px 16px;
+            display: flex; align-items: flex-start;
+            justify-content: space-between; gap: 12px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .card-question {
+            font-size: 13px; font-weight: 600; color: var(--text);
+            flex: 1; line-height: 1.4;
+        }
+        .card-badges { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+        .badge {
+            display: flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 20px;
+            font-size: 12px; font-weight: 600;
+        }
+        .badge.good   { background: var(--good-bg);  color: var(--good); }
+        .badge.mid    { background: var(--mid-bg);   color: var(--mid);  }
+        .badge.bad    { background: var(--bad-bg);   color: var(--bad);  }
+        .badge.error  { background: var(--bad-bg);   color: var(--bad);  }
+        .badge.intent { background: rgba(99,102,241,0.1); color: #6366f1; font-size: 11px; }
+        [data-theme="dark"] .badge.intent { background: rgba(99,102,241,0.18); color: #818cf8; }
+        .badge-label { font-size: 10px; font-weight: 500; opacity: 0.75; }
+
+        .card-body { padding: 12px 16px; }
+        .answer-label {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px;
+        }
+        .answer-text {
+            font-size: 13px; color: var(--text); line-height: 1.6;
+            max-height: 120px; overflow: hidden; position: relative;
+        }
+        .answer-text.expanded { max-height: none; }
+        .answer-fade {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
+            background: linear-gradient(transparent, var(--surface));
+            pointer-events: none;
+        }
+        .answer-text.expanded .answer-fade { display: none; }
+        .expand-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 11px; color: var(--primary); margin-top: 4px;
+            padding: 0; font-weight: 500;
+        }
+        .expand-btn:hover { text-decoration: underline; }
+
+        .error-text { font-size: 13px; color: var(--bad); font-style: italic; }
+
+        /* Processing card */
+        .processing-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 16px;
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+        }
+        .spinner {
+            width: 18px; height: 18px; flex-shrink: 0;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .processing-text { font-size: 13px; color: var(--text-muted); }
+        .processing-text strong { color: var(--text); font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <div class="header-divider"></div>
+    </div>
+    <div class="header-title">Response Quality Dashboard</div>
+    <button class="hdr-btn" id="themeBtn" title="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+    </button>
+</header>
+
+<div class="main-layout">
+
+    <!-- Left: Inputs -->
+    <div class="left-panel">
+        <div class="panel-header">
+            <div class="panel-title">Evaluation Setup</div>
+        </div>
+        <div class="panel-body">
+
+            <!-- Transcript -->
+            <div>
+                <label class="field-label">Transcript</label>
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" accept=".txt">
+                    <div class="upload-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                        </svg>
+                    </div>
+                    <div class="upload-label">Upload transcript file</div>
+                    <div class="upload-sublabel">Click or drag a .txt file here</div>
+                </div>
+                <div id="fileChip" style="display:none" class="file-chip">
+                    <div class="file-chip-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                    </div>
+                    <span class="file-chip-name" id="fileName"></span>
+                    <button class="file-chip-remove" id="removeFile">✕</button>
+                </div>
+            </div>
+
+            <!-- Paste transcript -->
+            <div>
+                <label class="field-label">Or paste transcript</label>
+                <textarea id="transcriptText" placeholder="[00:00:10] Alice: Hello everyone...&#10;[00:00:20] Bob: Good morning..." rows="5"></textarea>
+            </div>
+
+            <!-- Questions -->
+            <div>
+                <label class="field-label">Test questions</label>
+                <div class="field-hint">One question per line</div>
+                <textarea id="questionsText" placeholder="What were the main decisions made?&#10;What did Alice say about the budget?&#10;What are the action items?" rows="6"></textarea>
+            </div>
+
+        </div>
+        <div class="panel-footer">
+            <button class="run-btn" id="runBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Run Evaluation
+            </button>
+        </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div class="right-panel">
+        <div class="results-header">
+            <div class="results-title">Results</div>
+            <div class="summary-stats" id="summaryStats">
+                <div class="stat-box">
+                    <div class="stat-val" id="meanFaithfulness">—</div>
+                    <div class="stat-lbl">Avg Faithfulness</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="meanRelevancy">—</div>
+                    <div class="stat-lbl">Avg Relevancy</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="meanCtxPrecision">—</div>
+                    <div class="stat-lbl">Avg Ctx Precision</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="meanCtxRelevance">—</div>
+                    <div class="stat-lbl">Avg Ctx Relevance</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="totalCount">0</div>
+                    <div class="stat-lbl">Questions</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-body" id="resultsBody">
+            <div class="progress-bar-wrap" id="progressBarWrap">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+            <div class="progress-label" id="progressLabel"></div>
+
+            <div class="empty-state" id="emptyState">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <p>Upload a transcript and enter questions to begin.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ── Theme ──
+    const themeBtn = document.getElementById('themeBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    const saved = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+
+    themeBtn.addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        updateThemeIcon(next);
+    });
+    function updateThemeIcon(theme) {
+        themeIcon.innerHTML = theme === 'dark'
+            ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+            : '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+    }
+
+    // ── File upload ──
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput  = document.getElementById('fileInput');
+    const fileChip   = document.getElementById('fileChip');
+    const fileName   = document.getElementById('fileName');
+    const removeFile = document.getElementById('removeFile');
+    const transcriptText = document.getElementById('transcriptText');
+    let transcriptContent = '';
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', e => {
+        e.preventDefault(); uploadZone.classList.remove('dragover');
+        const f = e.dataTransfer.files[0];
+        if (f) loadFile(f);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+    removeFile.addEventListener('click', () => {
+        transcriptContent = '';
+        fileChip.style.display = 'none';
+        uploadZone.classList.remove('has-file');
+        fileInput.value = '';
+    });
+
+    function loadFile(f) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            transcriptContent = e.target.result;
+            fileName.textContent = f.name;
+            fileChip.style.display = 'flex';
+            uploadZone.classList.add('has-file');
+            transcriptText.value = '';
+        };
+        reader.readAsText(f);
+    }
+
+    // ── Run evaluation ──
+    const runBtn       = document.getElementById('runBtn');
+    const resultsBody  = document.getElementById('resultsBody');
+    const emptyState   = document.getElementById('emptyState');
+    const progressBarWrap = document.getElementById('progressBarWrap');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const progressLabel   = document.getElementById('progressLabel');
+    const summaryStats    = document.getElementById('summaryStats');
+    const meanFaithfulness = document.getElementById('meanFaithfulness');
+    const meanRelevancy    = document.getElementById('meanRelevancy');
+    const meanCtxPrecision = document.getElementById('meanCtxPrecision');
+    const meanCtxRelevance = document.getElementById('meanCtxRelevance');
+    const totalCount       = document.getElementById('totalCount');
+
+    let processingCard = null;
+    const scores = { faithfulness: [], answer_relevancy: [], context_precision: [], context_relevance: [] };
+
+    runBtn.addEventListener('click', startEval);
+
+    function startEval() {
+        const transcript = transcriptContent || transcriptText.value.trim();
+        const rawQuestions = document.getElementById('questionsText').value.trim();
+        const questions = rawQuestions.split('\n').map(q => q.trim()).filter(Boolean);
+
+        if (!transcript) { alert('Please upload or paste a transcript.'); return; }
+        if (!questions.length) { alert('Please enter at least one question.'); return; }
+
+        // Reset UI
+        emptyState.style.display = 'none';
+        scores.faithfulness = [];
+        scores.answer_relevancy = [];
+        scores.context_precision = [];
+        scores.context_relevance = [];
+        summaryStats.classList.remove('visible');
+        meanFaithfulness.textContent = '—';
+        meanRelevancy.textContent = '—';
+        meanCtxPrecision.textContent = '—';
+        meanCtxRelevance.textContent = '—';
+        totalCount.textContent = '0';
+
+        // Remove previous result cards
+        resultsBody.querySelectorAll('.result-card, .processing-card').forEach(el => el.remove());
+
+        progressBarWrap.classList.add('visible');
+        progressBarFill.style.width = '0%';
+        progressLabel.classList.add('visible');
+        progressLabel.textContent = `Starting evaluation of ${questions.length} question(s)...`;
+
+        runBtn.disabled = true;
+
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${protocol}://${location.host}/ws/eval`);
+
+        ws.onopen = () => ws.send(JSON.stringify({ transcript, questions }));
+
+        ws.onmessage = e => {
+            const msg = JSON.parse(e.data);
+
+            if (msg.type === 'progress') {
+                if (processingCard) processingCard.remove();
+                processingCard = document.createElement('div');
+                processingCard.className = 'processing-card';
+                processingCard.innerHTML = `
+                    <div class="spinner"></div>
+                    <div class="processing-text">
+                        Processing <strong>${escHtml(msg.question)}</strong>
+                        <span style="color:var(--text-muted)"> (${msg.index + 1} of ${msg.total})</span>
+                    </div>`;
+                resultsBody.appendChild(processingCard);
+                resultsBody.scrollTop = resultsBody.scrollHeight;
+
+                progressBarFill.style.width = `${(msg.index / msg.total) * 100}%`;
+                progressLabel.textContent = `Question ${msg.index + 1} of ${msg.total}`;
+            }
+
+            if (msg.type === 'result') {
+                if (processingCard) { processingCard.remove(); processingCard = null; }
+
+                const card = buildResultCard(msg);
+                resultsBody.appendChild(card);
+                resultsBody.scrollTop = resultsBody.scrollHeight;
+
+                if (!msg.error) {
+                    scores.faithfulness.push(msg.faithfulness);
+                    scores.answer_relevancy.push(msg.answer_relevancy);
+                    scores.context_precision.push(msg.context_precision);
+                    scores.context_relevance.push(msg.context_relevance);
+                }
+
+                updateSummary();
+                progressBarFill.style.width = `${((msg.index + 1) / msg.total) * 100}%`;
+            }
+
+            if (msg.type === 'complete') {
+                if (processingCard) { processingCard.remove(); processingCard = null; }
+                progressBarFill.style.width = '100%';
+                progressLabel.textContent = 'Evaluation complete.';
+                runBtn.disabled = false;
+            }
+
+            if (msg.type === 'error') {
+                progressLabel.textContent = `Error: ${msg.message}`;
+                runBtn.disabled = false;
+            }
+        };
+
+        ws.onerror = () => {
+            progressLabel.textContent = 'Connection error. Is the server running?';
+            runBtn.disabled = false;
+        };
+
+        ws.onclose = () => { runBtn.disabled = false; };
+    }
+
+    function buildResultCard(msg) {
+        const card = document.createElement('div');
+        card.className = 'result-card';
+
+        if (msg.error) {
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-question">${escHtml(msg.question)}</div>
+                    <span class="badge error">Error</span>
+                </div>
+                <div class="card-body">
+                    <div class="error-text">${escHtml(msg.error)}</div>
+                </div>`;
+            return card;
+        }
+
+        const fClass  = scoreClass(msg.faithfulness);
+        const rClass  = scoreClass(msg.answer_relevancy);
+        const cpClass = scoreClass(msg.context_precision);
+        const crClass = scoreClass(msg.context_relevance);
+
+        card.innerHTML = `
+            <div class="card-header">
+                <div class="card-question">${escHtml(msg.question)}</div>
+                <div class="card-badges">
+                    ${buildIntentBadge(msg.intent)}
+                    <span class="badge ${fClass}">
+                        <span class="badge-label">Faithfulness</span>
+                        ${msg.faithfulness.toFixed(2)}
+                    </span>
+                    <span class="badge ${rClass}">
+                        <span class="badge-label">Relevancy</span>
+                        ${msg.answer_relevancy.toFixed(2)}
+                    </span>
+                    <span class="badge ${cpClass}">
+                        <span class="badge-label">Ctx Precision</span>
+                        ${msg.context_precision.toFixed(2)}
+                    </span>
+                    <span class="badge ${crClass}">
+                        <span class="badge-label">Ctx Relevance</span>
+                        ${msg.context_relevance.toFixed(2)}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="answer-label">Answer</div>
+                <div class="answer-text" id="ans-${msg.index}">
+                    ${escHtml(msg.answer)}
+                    <div class="answer-fade"></div>
+                </div>
+                <button class="expand-btn" data-target="ans-${msg.index}">Show more</button>
+            </div>`;
+
+        card.querySelector('.expand-btn').addEventListener('click', function() {
+            const el = document.getElementById(this.dataset.target);
+            el.classList.toggle('expanded');
+            this.textContent = el.classList.contains('expanded') ? 'Show less' : 'Show more';
+        });
+
+        return card;
+    }
+
+    function updateSummary() {
+        const n = scores.faithfulness.length;
+        if (!n) return;
+        summaryStats.classList.add('visible');
+        const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+        const avgF  = avg(scores.faithfulness);
+        const avgR  = avg(scores.answer_relevancy);
+        const avgCP = avg(scores.context_precision);
+        const avgCR = avg(scores.context_relevance);
+        meanFaithfulness.textContent = avgF.toFixed(2);
+        meanRelevancy.textContent    = avgR.toFixed(2);
+        meanCtxPrecision.textContent = avgCP.toFixed(2);
+        meanCtxRelevance.textContent = avgCR.toFixed(2);
+        totalCount.textContent = n;
+        meanFaithfulness.style.color = scoreColor(avgF);
+        meanRelevancy.style.color    = scoreColor(avgR);
+        meanCtxPrecision.style.color = scoreColor(avgCP);
+        meanCtxRelevance.style.color = scoreColor(avgCR);
+    }
+
+    function buildIntentBadge(intent) {
+        if (!intent) return '';
+        const flags = [];
+        if (intent.temporal)  flags.push('temporal');
+        if (intent.speaker)   flags.push('speaker');
+        if (intent.synthesis) flags.push('synthesis');
+        const label = flags.length ? flags.join(' + ') : 'factual';
+        return `<span class="badge intent">${label}</span>`;
+    }
+
+    function scoreClass(v) {
+        if (v >= 0.75) return 'good';
+        if (v >= 0.5)  return 'mid';
+        return 'bad';
+    }
+    function scoreColor(v) {
+        if (v >= 0.75) return 'var(--good)';
+        if (v >= 0.5)  return 'var(--mid)';
+        return 'var(--bad)';
+    }
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+</body>
+</html>
