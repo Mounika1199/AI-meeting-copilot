@@ -49,7 +49,7 @@ static/
 ## Installation
 
 ```bash
-git clone https://github.com/<your-username>/AI_meeting_copilot.git
+git clone https://github.com/Mounika1199/AI-meeting-copilot.git
 cd AI_meeting_copilot
 
 python -m venv venv
